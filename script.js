@@ -1,0 +1,258 @@
+let token = '';
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('signup-btn').addEventListener('click', signup);
+    document.getElementById('login-btn').addEventListener('click', login);
+});
+
+function signup() {
+    const username = document.getElementById('signup-username').value;
+    const password = document.getElementById('signup-password').value;
+
+    fetch('http://localhost:3000/signup', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+    }).then(res => {
+        if (res.status === 201) {
+            alert('Регистрация успешна');
+        } else {
+            alert('Ошибка регистрации');
+        }
+    });
+}
+
+function login() {
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+
+    fetch('http://localhost:3000/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+    }).then(res => res.json()).then(data => {
+        if (data.token) {
+            token = data.token;
+            document.getElementById('auth-container').style.display = 'none';
+            document.getElementById('week-container').style.display = 'block';
+            generateWeek();
+            loadTasks();
+        } else {
+            alert('Неверные учетные данные');
+        }
+    });
+}
+
+function loadTasks() {
+    fetch('http://localhost:3000/tasks', {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+        },
+    }).then(res => res.json()).then(tasks => {
+        tasks.forEach(task => {
+            const day = new Date(task.start).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+            addTaskToDOM(task, day);
+        });
+    });
+}
+
+function generateWeek() {
+    const weekContainer = document.getElementById('week-container');
+    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = new Date();
+    const startOfWeek = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(currentYear, currentMonth, startOfWeek + i);
+        const dayName = daysOfWeek[date.getDay()];
+        const dayDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        const dayContainer = document.createElement('div');
+        dayContainer.className = 'day-container';
+        dayContainer.id = dayName.toLowerCase();
+
+        dayContainer.innerHTML = `
+            <h2>${dayName} - ${dayDate}</h2>
+            <input type="text" placeholder="Добавить новую задачу" onkeypress="handleKeyPress(event, '${dayName.toLowerCase()}')">
+            <button onclick="addTask('${dayName.toLowerCase()}')">Добавить</button>
+            <ul class="task-list"></ul>
+        `;
+
+        weekContainer.appendChild(dayContainer);
+    }
+}
+
+function handleKeyPress(event, day) {
+    if (event.key === 'Enter') {
+        addTask(day);
+    }
+}
+
+function addTask(day) {
+    const dayContainer = document.getElementById(day);
+    const taskInput = dayContainer.querySelector('input[type="text"]');
+    const taskText = taskInput.value.trim();
+
+    if (taskText !== '') {
+        const taskData = {
+            text: taskText,
+            start: new Date().toISOString(),
+            end: null,
+            completed: false,
+        };
+
+        // Сохраняем задачу на сервере
+        fetch('http://localhost:3000/tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(taskData),
+        }).then(res => {
+            if (res.status === 201) {
+                // Добавляем задачу в DOM
+                addTaskToDOM(taskData, day);
+            } else {
+                alert('Ошибка добавления задачи');
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+        });
+
+        taskInput.value = '';
+    }
+}
+
+function addTaskToDOM(task, day) {
+    const dayContainer = document.getElementById(day);
+    const taskList = dayContainer.querySelector('.task-list');
+    const newTask = document.createElement('li');
+
+    newTask.innerHTML = `
+        <div class="task-item">
+            <div class="start-time"><span class="start">Не установлено</span></div>
+            <span>${task.text}</span>
+            <div class="task-actions">
+                <div class="timer-box" style="display: none;"><span class="time">Не установлено</span></div>
+                <button class="icon-button complete" onclick="toggleComplete(this)">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="icon-button delete" onclick="deleteTask(this)">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+        <div class="timer-inputs">
+            <div class="slider" id="slider-${Date.now()}"></div>
+            <button onclick="setTaskTime(this)">Установить время задачи</button>
+        </div>
+    `;
+
+    taskList.appendChild(newTask);
+
+    const slider = newTask.querySelector('.slider');
+    $(slider).slider({
+        range: true,
+        min: 0,
+        max: 1440,
+        step: 30,
+        values: [480, 1020],
+        slide: function (event, ui) {
+            $(slider).find('.ui-slider-handle').eq(0).attr('data-value', minutesToTime(ui.values[0]));
+            $(slider).find('.ui-slider-handle').eq(1).attr('data-value', minutesToTime(ui.values[1]));
+        },
+        create: function (event, ui) {
+            $(slider).find('.ui-slider-handle').eq(0).attr('data-value', minutesToTime(480));
+            $(slider).find('.ui-slider-handle').eq(1).attr('data-value', minutesToTime(1020));
+        }
+    });
+}
+
+function minutesToTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours < 10 ? '0' + hours : hours}:${mins === 0 ? '00' : mins < 10 ? '0' + mins : mins}`;
+}
+
+function toggleComplete(button) {
+    const taskItem = button.closest('li');
+    taskItem.classList.toggle('completed');
+}
+
+function deleteTask(button) {
+    const taskItem = button.closest('li');
+    taskItem.remove();
+}
+
+function setTaskTime(button) {
+    const taskItem = button.closest('li');
+    const timerInputs = button.parentElement;
+    const slider = $(timerInputs.querySelector('.slider')).slider("option", "values");
+    const timeDisplay = taskItem.querySelector('.time');
+    const timerBox = taskItem.querySelector('.timer-box');
+    const startTimeDisplay = taskItem.querySelector('.start');
+
+    const startMinutes = slider[0];
+    const endMinutes = slider[1];
+
+    const startTime = minutesToDateTime(startMinutes);
+    const endTime = minutesToDateTime(endMinutes);
+
+    if (endTime <= startTime) {
+        alert('Время окончания должно быть после времени начала');
+        return;
+    }
+
+    startTimeDisplay.textContent = `${startTime.getHours().toString().padStart(2, '0')}:${startTime.getMinutes().toString().padStart(2, '0')}`;
+    startTimeDisplay.parentElement.style.display = 'block';
+
+    function updateTimer() {
+        const now = new Date();
+        const timeLeft = endTime - now;
+
+        if (timeLeft <= 0) {
+            timeDisplay.textContent = '00:00';
+            clearInterval(timerInterval);
+            return;
+        }
+
+        const hoursLeft = Math.floor(timeLeft / (1000 * 60 * 60));
+        const minutesLeft = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+        const secondsLeft = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+        timeDisplay.textContent = `${hoursLeft.toString().padStart(2, '0')}:${minutesLeft.toString().padStart(2, '0')}:${secondsLeft.toString().padStart(2, '0')}`;
+    }
+
+    updateTimer();
+    const timerInterval = setInterval(updateTimer, 1000);
+
+    timerInputs.style.display = 'none';
+    timerBox.style.display = 'block';
+
+    sortTasks(taskItem.parentElement);
+}
+
+function minutesToDateTime(minutes) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, mins);
+}
+
+function sortTasks(taskList) {
+    const tasks = Array.from(taskList.children);
+    tasks.sort((a, b) => {
+        const startA = new Date(`1970-01-01T${a.querySelector('.start').textContent}:00`);
+        const startB = new Date(`1970-01-01T${b.querySelector('.start').textContent}:00`);
+        return startA - startB;
+    });
+
+    tasks.forEach(task => taskList.appendChild(task));
+}
