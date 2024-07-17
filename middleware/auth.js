@@ -1,16 +1,17 @@
+// middleware/auth.js
+
 const jwt = require('jsonwebtoken');
 
 function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = req.headers['authorization']?.split(' ')[1];
 
-    if (token == null) return res.status(401).send('Access denied');
+    if (!token) return res.sendStatus(401);
 
     jwt.verify(token, 'your_jwt_secret', (err, user) => {
-        if (err) return res.status(403).send('Invalid token');
+        if (err) return res.sendStatus(403);
         req.user = user;
         next();
     });
 }
 
-module.exports = authenticateToken;
+module.exports = { authenticateToken };
