@@ -13,19 +13,21 @@
 </head>
 
 <body>
-    <div id="auth-container">
+    <div id="week-container" class="week-container"></div>
+
+    <form id="register-form">
         <h2>Регистрация</h2>
-        <input type="text" id="signup-username" placeholder="Имя пользователя">
-        <input type="password" id="signup-password" placeholder="Пароль">
-        <button id="signup-btn">Зарегистрироваться</button>
+        <input type="text" name="username" placeholder="Username">
+        <input type="password" name="password" placeholder="Password">
+        <button type="submit">Зарегистрироваться</button>
+    </form>
 
+    <form id="login-form">
         <h2>Вход</h2>
-        <input type="text" id="login-username" placeholder="Имя пользователя">
-        <input type="password" id="login-password" placeholder="Пароль">
-        <button id="login-btn">Войти</button>
-    </div>
-
-    <div id="week-container" class="week-container" style="display: none;"></div>
+        <input type="text" name="username" placeholder="Username">
+        <input type="password" name="password" placeholder="Password">
+        <button type="submit">Войти</button>
+    </form>
 </body>
 
 </html>
