@@ -1,74 +1,43 @@
+// server.js
 const express = require('express');
-const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const cors = require('cors');
 const path = require('path');
-const authenticateToken = require('./middleware/auth'); // Подключаем middleware
+const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
+const User = require('./models/User');
+const Task = require('./models/Task');
+const { authenticateToken } = require('./middleware/auth');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(cors());
+app.use(express.static(path.join(__dirname, 'public')));
 
-const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:Aidanito@1@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority';
-
-mongoose.connect(mongoUri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB'))
-    .catch(err => console.log('Failed to connect to MongoDB', err));
-
-const userSchema = new mongoose.Schema({
-    username: String,
-    password: String,
-});
-
-const User = mongoose.model('User', userSchema);
-
-const taskSchema = new mongoose.Schema({
-    userId: mongoose.Schema.Types.ObjectId,
-    day: String,
-    tasks: Array,
-});
-
-const Task = mongoose.model('Task', taskSchema);
+    .catch(err => console.error('Failed to connect to MongoDB', err));
 
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        const newUser = new User({ username, password: hashedPassword });
-        await newUser.save();
-
+        const user = new User({ username, password });
+        await user.save();
         res.status(201).send('User registered');
     } catch (error) {
-        res.status(500).send({ message: 'Registration failed', error });
+        res.status(500).send('Error registering user');
     }
 });
 
 app.post('/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
 
-        const user = await User.findOne({ username });
-        if (!user) {
-            return res.status(400).send('Invalid username or password');
-        }
-
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(400).send('Invalid username or password');
-        }
-
-        const token = jwt.sign({ id: user._id }, 'your_jwt_secret');
-        res.json({ token });
-    } catch (error) {
-        res.status(500).send({ message: 'Login failed', error });
+    if (!user || user.password !== password) {
+        return res.status(400).send('Invalid username or password');
     }
+
+    const token = jwt.sign({ id: user._id }, 'your_jwt_secret');
+    res.json({ token });
 });
 
 app.get('/api/tasks', authenticateToken, async (req, res) => {
@@ -88,13 +57,7 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
     res.status(200).send('Tasks saved');
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/tasks', authenticateToken, (req, res) => {
+app.get('/tasks', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
 });
 
