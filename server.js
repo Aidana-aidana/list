@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 // MongoDB connection string
-const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:Aidanito@1@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority';
+const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:<password>@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority';
 
 mongoose.connect(mongoUri, {
     useNewUrlParser: true,
@@ -25,6 +25,12 @@ mongoose.connect(mongoUri, {
 const userSchema = new mongoose.Schema({
     username: String,
     password: String,
+    tasks: [{
+        day: String,
+        task: String,
+        startTime: String,
+        endTime: String,
+    }]
 });
 
 const User = mongoose.model('User', userSchema);
@@ -63,6 +69,40 @@ app.post('/login', async (req, res) => {
         res.send({ token });
     } catch (error) {
         res.status(500).send({ message: 'Login failed', error });
+    }
+});
+
+// Middleware for authentication
+function authenticateToken(req, res, next) {
+    const token = req.headers['authorization'];
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, 'your_jwt_secret', (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+}
+
+// Save tasks endpoint
+app.post('/save-tasks', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        user.tasks = req.body.tasks;
+        await user.save();
+        res.send('Tasks saved');
+    } catch (error) {
+        res.status(500).send({ message: 'Failed to save tasks', error });
+    }
+});
+
+// Get tasks endpoint
+app.get('/tasks', authenticateToken, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        res.send(user.tasks);
+    } catch (error) {
+        res.status(500).send({ message: 'Failed to retrieve tasks', error });
     }
 });
 
