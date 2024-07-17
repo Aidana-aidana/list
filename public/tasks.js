@@ -53,18 +53,6 @@ async function saveTasks() {
     });
 }
 
-async function addTask(day) {
-    const dayContainer = document.getElementById(day);
-    const taskInput = dayContainer.querySelector('input[type="text"]');
-    const taskText = taskInput.value.trim();
-
-    if (taskText !== '') {
-        addTaskElement(day, taskText, 'Not set', 'Not set');
-        await saveTasks();
-        taskInput.value = '';
-    }
-}
-
 function addTaskElement(day, text, startTime, endTime) {
     const dayContainer = document.getElementById(day);
     const taskList = dayContainer.querySelector('.task-list');
@@ -173,7 +161,6 @@ function setTaskTime(button) {
     timerInputs.style.display = 'none';
     timerBox.style.display = 'block';
 
-    sortTasks(taskItem.parentElement);
     saveTasks();
 }
 
@@ -184,18 +171,57 @@ function minutesToDateTime(minutes) {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, mins);
 }
 
-function sortTasks(taskList) {
-    const tasks = Array.from(taskList.children);
-    tasks.sort((a, b) => {
-        const startA = new Date(`1970-01-01T${a.querySelector('.start').textContent}:00`);
-        const startB = new Date(`1970-01-01T${b.querySelector('.start').textContent}:00`);
-        return startA - startB;
-    });
-
-    tasks.forEach(task => taskList.appendChild(task));
-}
-
 function logout() {
     localStorage.removeItem('token');
     window.location.href = '/';
+}
+
+async function addTask(day) {
+    const dayContainer = document.getElementById(day);
+    const taskInput = dayContainer.querySelector('input[type="text"]');
+    const taskText = taskInput.value.trim();
+
+    if (taskText !== '') {
+        addTaskElement(day, taskText, 'Not set', 'Not set');
+        taskInput.value = '';
+        await saveTasks();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    generateWeek();
+});
+
+function generateWeek() {
+    const weekContainer = document.getElementById('week-container');
+    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = new Date();
+    const startOfWeek = today.getDate();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(currentYear, currentMonth, startOfWeek + i);
+        const dayName = daysOfWeek[date.getDay()];
+        const dayDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+        const dayContainer = document.createElement('div');
+        dayContainer.className = 'day-container';
+        dayContainer.id = dayName.toLowerCase();
+
+        dayContainer.innerHTML = `
+            <h2>${dayName} - ${dayDate}</h2>
+            <input type="text" placeholder="Add a new task" onkeypress="handleKeyPress(event, '${dayName.toLowerCase()}')">
+            <button onclick="addTask('${dayName.toLowerCase()}')">Add</button>
+            <ul class="task-list"></ul>
+        `;
+
+        weekContainer.appendChild(dayContainer);
+    }
+}
+
+function handleKeyPress(event, day) {
+    if (event.key === 'Enter') {
+        addTask(day);
+    }
 }
