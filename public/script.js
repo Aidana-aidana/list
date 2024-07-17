@@ -33,7 +33,6 @@ async function login() {
     if (response.ok) {
         const { token } = await response.json();
         localStorage.setItem('token', token);
-        alert('Login successful');
         window.location.href = '/tasks';
     } else {
         const error = await response.json();
