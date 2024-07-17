@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 // MongoDB connection string
-const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:<password>@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority&appName=Cluster0';
+const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:<Aidanito@1>@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(mongoUri, {
     useNewUrlParser: true,
