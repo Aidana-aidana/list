@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -6,9 +5,10 @@ const jwt = require('jsonwebtoken');
 const User = require('./models/User');
 const Task = require('./models/Task');
 const { authenticateToken } = require('./middleware/auth');
+require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -29,15 +29,19 @@ app.post('/register', async (req, res) => {
 });
 
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    try {
+        const { username, password } = req.body;
+        const user = await User.findOne({ username });
 
-    if (!user || user.password !== password) {
-        return res.status(400).send('Invalid username or password');
+        if (!user || user.password !== password) {
+            return res.status(400).send('Invalid username or password');
+        }
+
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.json({ token });
+    } catch (error) {
+        res.status(500).send('Error logging in');
     }
-
-    const token = jwt.sign({ id: user._id }, 'your_jwt_secret');
-    res.json({ token });
 });
 
 app.get('/api/tasks', authenticateToken, async (req, res) => {
@@ -55,10 +59,6 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
     await Task.insertMany(tasks);
 
     res.status(200).send('Tasks saved');
-});
-
-app.get('/tasks', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
 });
 
 app.listen(PORT, () => {
