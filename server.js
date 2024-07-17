@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 // MongoDB connection string
-const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:<Aidanito@1>@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority&appName=Cluster0';
+const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:<password>@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(mongoUri, {
     useNewUrlParser: true,
@@ -55,6 +56,14 @@ app.post('/login', async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, 'your_jwt_secret');
     res.send({ token });
+});
+
+// Serve static files from the "public" directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve the main HTML file at the root URL
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, () => {
