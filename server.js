@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
+require('dotenv').config(); // Подключение dotenv
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,7 +13,7 @@ app.use(express.json());
 app.use(cors());
 
 // MongoDB connection string
-const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:your_password@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority&appName=Cluster0';
+const mongoUri = process.env.MONGODB_URI;
 
 mongoose.connect(mongoUri, {
     useNewUrlParser: true,
@@ -21,7 +22,6 @@ mongoose.connect(mongoUri, {
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.log('Failed to connect to MongoDB', err));
 
-// User schema and model
 const userSchema = new mongoose.Schema({
     username: String,
     password: String,
@@ -29,7 +29,6 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Register endpoint
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -44,7 +43,6 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Login endpoint
 app.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -66,10 +64,8 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the main HTML file at the root URL
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
