@@ -9,13 +9,12 @@ body {
 }
 
 .week-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 20px;
-    padding: 20px;
-    width: 100%;
-    max-width: 1200px;
-    box-sizing: border-box;
+    justify-content: center;
+    align-items: flex-start;
+    max-width: 1500px;
 }
 
 .day-container {
@@ -23,31 +22,34 @@ body {
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 300px;
     text-align: center;
+    margin: 10px;
 }
 
 input[type="text"] {
     width: calc(100% - 22px);
     padding: 10px;
     margin-bottom: 10px;
-    font-size: 16px;
+    font-size: 18px;
     border: 1px solid #ccc;
     border-radius: 5px;
 }
 
 button {
-    padding: 8px 16px;
+    padding: 10px;
     font-size: 14px;
+    margin: 5px;
     border: none;
     border-radius: 5px;
-    background-color: #007BFF;
+    background-color: #5b7f93;
     color: white;
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 button:hover {
-    background-color: #0056b3;
+    background-color: #3a5566;
 }
 
 ul {
