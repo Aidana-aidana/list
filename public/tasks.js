@@ -1,57 +1,43 @@
 document.addEventListener('DOMContentLoaded', () => {
     const token = localStorage.getItem('token');
-    if (token) {
-        fetchTasks(token);
-    } else {
-        window.location.href = '/';
-    }
-});
 
-function fetchTasks(token) {
+    if (!token) {
+        window.location.href = '/';
+        return;
+    }
+
     fetch('/api/tasks', {
         headers: {
-            'Authorization': token
-        }
+            'Authorization': token,
+        },
     })
         .then(response => {
-            if (response.ok) {
-                return response.json();
-            } else {
-                throw new Error('Failed to fetch tasks');
+            if (response.status === 401) {
+                window.location.href = '/';
             }
+            return response.json();
         })
         .then(tasks => {
-            generateWeek(tasks);
-        })
-        .catch(error => {
-            console.error(error);
-            alert('Failed to fetch tasks');
-        });
-}
-
-function saveTasks(token, tasks) {
-    fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token
-        },
-        body: JSON.stringify(tasks)
-    })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to save tasks');
+            if (tasks) {
+                tasks.forEach(task => addTaskToDOM(task));
             }
-        })
-        .catch(error => {
-            console.error(error);
-            alert('Failed to save tasks');
         });
-}
 
-function handleLogout() {
-    localStorage.removeItem('token');
-    window.location.href = '/';
-}
+    function addTaskToDOM(task) {
+        const dayContainer = document.getElementById(task.day.toLowerCase());
+        if (dayContainer) {
+            task.tasks.forEach(taskText => {
+                const taskList = dayContainer.querySelector('.task-list');
+                const newTask = document.createElement('li');
+                newTask.textContent = taskText;
+                taskList.appendChild(newTask);
+            });
+        }
+    }
 
-// Existing code for generating week and handling tasks...
+    const logoutButton = document.querySelector('#logout');
+    logoutButton.addEventListener('click', () => {
+        localStorage.removeItem('token');
+        window.location.href = '/';
+    });
+});
