@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const path = require('path');
+const authenticateToken = require('./middleware/auth'); // Подключаем middleware
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -11,7 +12,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(cors());
 
-// MongoDB connection string
 const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:Aidanito@1@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority';
 
 mongoose.connect(mongoUri, {
@@ -21,7 +21,6 @@ mongoose.connect(mongoUri, {
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.log('Failed to connect to MongoDB', err));
 
-// User schema and model
 const userSchema = new mongoose.Schema({
     username: String,
     password: String,
@@ -29,7 +28,6 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Task schema and model
 const taskSchema = new mongoose.Schema({
     userId: mongoose.Schema.Types.ObjectId,
     day: String,
@@ -38,19 +36,6 @@ const taskSchema = new mongoose.Schema({
 
 const Task = mongoose.model('Task', taskSchema);
 
-// Middleware для аутентификации
-function authenticateToken(req, res, next) {
-    const token = req.headers['authorization'];
-    if (!token) return res.status(401).send('Access denied');
-
-    jwt.verify(token, 'your_jwt_secret', (err, user) => {
-        if (err) return res.status(403).send('Invalid token');
-        req.user = user;
-        next();
-    });
-}
-
-// Register endpoint
 app.post('/register', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -65,7 +50,6 @@ app.post('/register', async (req, res) => {
     }
 });
 
-// Login endpoint
 app.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -87,7 +71,6 @@ app.post('/login', async (req, res) => {
     }
 });
 
-// API для задач
 app.get('/api/tasks', authenticateToken, async (req, res) => {
     const tasks = await Task.find({ userId: req.user.id });
     res.json(tasks);
@@ -105,15 +88,12 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
     res.status(200).send('Tasks saved');
 });
 
-// Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve the main HTML file at the root URL
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Serve the tasks HTML file at /tasks URL
 app.get('/tasks', authenticateToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
 });

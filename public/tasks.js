@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetch('/api/tasks', {
         headers: {
-            'Authorization': token,
+            'Authorization': `Bearer ${token}`,
         },
     })
         .then(response => {
