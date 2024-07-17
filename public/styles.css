@@ -8,25 +8,24 @@ body {
     font-family: Arial, sans-serif;
 }
 
-.week-container {
+.container {
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
     justify-content: center;
-    align-items: flex-start;
-    max-width: 1500px;
+    align-items: center;
+    height: 100vh;
 }
 
-.day-container {
+.form-container {
     background-color: #fff;
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    width: 400px;
+    width: 300px;
     text-align: center;
 }
 
-input[type="text"] {
+input[type="text"],
+input[type="password"] {
     width: calc(100% - 22px);
     padding: 15px;
     margin-bottom: 10px;
@@ -48,6 +47,24 @@ button {
 
 button:hover {
     background-color: #e0e0e0;
+}
+
+.week-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    align-items: flex-start;
+    max-width: 1500px;
+}
+
+.day-container {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 400px;
+    text-align: center;
 }
 
 ul {
