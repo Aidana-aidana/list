@@ -33,12 +33,22 @@ const User = mongoose.model('User', userSchema);
 const taskSchema = new mongoose.Schema({
     userId: mongoose.Schema.Types.ObjectId,
     day: String,
-    text: String,
-    startTime: String,
-    endTime: String
+    tasks: Array,
 });
 
 const Task = mongoose.model('Task', taskSchema);
+
+// Middleware для аутентификации
+function authenticateToken(req, res, next) {
+    const token = req.headers['authorization'];
+    if (!token) return res.status(401).send('Access denied');
+
+    jwt.verify(token, 'your_jwt_secret', (err, user) => {
+        if (err) return res.status(403).send('Invalid token');
+        req.user = user;
+        next();
+    });
+}
 
 // Register endpoint
 app.post('/register', async (req, res) => {
@@ -71,40 +81,10 @@ app.post('/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user._id }, 'your_jwt_secret');
-        res.send({ token });
+        res.json({ token });
     } catch (error) {
         res.status(500).send({ message: 'Login failed', error });
     }
-});
-
-// Middleware для проверки авторизации
-function authenticateToken(req, res, next) {
-    const token = req.headers['authorization'];
-
-    if (token == null) {
-        return res.status(401).send('Access denied');
-    }
-
-    jwt.verify(token, 'your_jwt_secret', (err, user) => {
-        if (err) {
-            return res.status(403).send('Access denied');
-        }
-        req.user = user;
-        next();
-    });
-}
-
-// Обработка запросов к /tasks с авторизацией
-app.get('/tasks', authenticateToken, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
-});
-
-// Serve static files from the "public" directory
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Serve the main HTML file at the root URL
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // API для задач
@@ -123,6 +103,19 @@ app.post('/api/tasks', authenticateToken, async (req, res) => {
     await Task.insertMany(tasks);
 
     res.status(200).send('Tasks saved');
+});
+
+// Serve static files from the "public" directory
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve the main HTML file at the root URL
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Serve the tasks HTML file at /tasks URL
+app.get('/tasks', authenticateToken, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
 });
 
 app.listen(PORT, () => {
