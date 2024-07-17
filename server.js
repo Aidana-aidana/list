@@ -7,12 +7,13 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 app.use(express.json());
 app.use(cors());
 
 // MongoDB connection string
-const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:<password>@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority';
+const mongoUri = process.env.MONGODB_URI || 'mongodb+srv://englishschoolala:Aidanito@1@cluster0.5hdisr4.mongodb.net/myDatabase?retryWrites=true&w=majority';
 
 mongoose.connect(mongoUri, {
     useNewUrlParser: true,
@@ -25,15 +26,21 @@ mongoose.connect(mongoUri, {
 const userSchema = new mongoose.Schema({
     username: String,
     password: String,
-    tasks: [{
-        day: String,
-        task: String,
-        startTime: String,
-        endTime: String,
-    }]
 });
 
 const User = mongoose.model('User', userSchema);
+
+// Middleware to verify JWT token
+const verifyToken = (req, res, next) => {
+    const token = req.headers['authorization'];
+    if (!token) return res.status(401).send('Unauthorized');
+
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) return res.status(403).send('Forbidden');
+        req.userId = decoded.id;
+        next();
+    });
+};
 
 // Register endpoint
 app.post('/register', async (req, res) => {
@@ -65,44 +72,10 @@ app.post('/login', async (req, res) => {
             return res.status(400).send('Invalid username or password');
         }
 
-        const token = jwt.sign({ id: user._id }, 'your_jwt_secret');
+        const token = jwt.sign({ id: user._id }, JWT_SECRET);
         res.send({ token });
     } catch (error) {
         res.status(500).send({ message: 'Login failed', error });
-    }
-});
-
-// Middleware for authentication
-function authenticateToken(req, res, next) {
-    const token = req.headers['authorization'];
-    if (!token) return res.sendStatus(401);
-
-    jwt.verify(token, 'your_jwt_secret', (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
-}
-
-// Save tasks endpoint
-app.post('/save-tasks', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        user.tasks = req.body.tasks;
-        await user.save();
-        res.send('Tasks saved');
-    } catch (error) {
-        res.status(500).send({ message: 'Failed to save tasks', error });
-    }
-});
-
-// Get tasks endpoint
-app.get('/tasks', authenticateToken, async (req, res) => {
-    try {
-        const user = await User.findById(req.user.id);
-        res.send(user.tasks);
-    } catch (error) {
-        res.status(500).send({ message: 'Failed to retrieve tasks', error });
     }
 });
 
@@ -115,8 +88,24 @@ app.get('/', (req, res) => {
 });
 
 // Serve the tasks HTML file at /tasks URL
-app.get('/tasks', (req, res) => {
+app.get('/tasks', verifyToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
+});
+
+// Endpoint to get tasks for the logged-in user
+app.get('/api/tasks', verifyToken, (req, res) => {
+    const tasks = [
+        { day: 'monday', text: 'Sample Task 1', startTime: '08:00', endTime: '09:00' },
+        // add more tasks
+    ];
+    res.send(tasks);
+});
+
+// Endpoint to save tasks for the logged-in user
+app.post('/api/tasks', verifyToken, (req, res) => {
+    const tasks = req.body;
+    // Save tasks to the database
+    res.send({ message: 'Tasks saved' });
 });
 
 app.listen(PORT, () => {

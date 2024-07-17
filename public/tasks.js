@@ -1,17 +1,74 @@
 document.addEventListener('DOMContentLoaded', () => {
+    fetchTasks();
     generateWeek();
 });
 
+function fetchTasks() {
+    const token = localStorage.getItem('token');
+    fetch('/api/tasks', {
+        headers: {
+            'Authorization': token
+        }
+    })
+        .then(response => response.json())
+        .then(tasks => {
+            tasks.forEach(task => addTaskToDOM(task));
+        });
+}
+
+function addTaskToDOM(task) {
+    const dayContainer = document.getElementById(task.day);
+    if (dayContainer) {
+        const taskList = dayContainer.querySelector('.task-list');
+        const newTask = document.createElement('li');
+        newTask.innerHTML = `
+            <div class="task-item">
+                <div class="start-time"><span class="start">${task.startTime}</span></div>
+                <span>${task.text}</span>
+                <div class="task-actions">
+                    <div class="timer-box" style="display: none;"><span class="time">Not set</span></div>
+                    <button class="icon-button complete" onclick="toggleComplete(this)">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="icon-button delete" onclick="deleteTask(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="timer-inputs">
+                <div class="slider" id="slider-${Date.now()}"></div>
+                <button onclick="setTaskTime(this)">Set Task Time</button>
+            </div>
+        `;
+        taskList.appendChild(newTask);
+        // Initialize slider
+        const slider = newTask.querySelector('.slider');
+        $(slider).slider({
+            range: true,
+            min: 0,
+            max: 1440,
+            step: 30,
+            values: [480, 1020],
+            slide: function (event, ui) {
+                $(slider).find('.ui-slider-handle').eq(0).attr('data-value', minutesToTime(ui.values[0]));
+                $(slider).find('.ui-slider-handle').eq(1).attr('data-value', minutesToTime(ui.values[1]));
+            },
+            create: function (event, ui) {
+                $(slider).find('.ui-slider-handle').eq(0).attr('data-value', minutesToTime(480));
+                $(slider).find('.ui-slider-handle').eq(1).attr('data-value', minutesToTime(1020));
+            }
+        });
+    }
+}
+
 function generateWeek() {
     const weekContainer = document.getElementById('week-container');
-    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const today = new Date();
-    const startOfWeek = today.getDate();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
+    const startOfWeek = today.getDate() - today.getDay();
 
     for (let i = 0; i < 7; i++) {
-        const date = new Date(currentYear, currentMonth, startOfWeek + i);
+        const date = new Date(today.setDate(startOfWeek + i));
         const dayName = daysOfWeek[date.getDay()];
         const dayDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
@@ -42,50 +99,28 @@ function addTask(day) {
     const taskText = taskInput.value.trim();
 
     if (taskText !== '') {
-        const taskList = dayContainer.querySelector('.task-list');
-        const newTask = document.createElement('li');
-
-        newTask.innerHTML = `
-            <div class="task-item">
-                <div class="start-time"><span class="start">Not set</span></div>
-                <span>${taskText}</span>
-                <div class="task-actions">
-                    <div class="timer-box" style="display: none;"><span class="time">Not set</span></div>
-                    <button class="icon-button complete" onclick="toggleComplete(this)">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button class="icon-button delete" onclick="deleteTask(this)">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="timer-inputs">
-                <div class="slider" id="slider-${Date.now()}"></div>
-                <button onclick="setTaskTime(this)">Set Task Time</button>
-            </div>
-        `;
-
-        taskList.appendChild(newTask);
-
-        const slider = newTask.querySelector('.slider');
-        $(slider).slider({
-            range: true,
-            min: 0,
-            max: 1440,
-            step: 30,
-            values: [480, 1020],
-            slide: function (event, ui) {
-                $(slider).find('.ui-slider-handle').eq(0).attr('data-value', minutesToTime(ui.values[0]));
-                $(slider).find('.ui-slider-handle').eq(1).attr('data-value', minutesToTime(ui.values[1]));
-            },
-            create: function (event, ui) {
-                $(slider).find('.ui-slider-handle').eq(0).attr('data-value', minutesToTime(480));
-                $(slider).find('.ui-slider-handle').eq(1).attr('data-value', minutesToTime(1020));
-            }
-        });
-
+        const task = {
+            day: day,
+            text: taskText,
+            startTime: 'Not set',
+            endTime: 'Not set'
+        };
+        saveTask(task);
+        addTaskToDOM(task);
         taskInput.value = '';
     }
+}
+
+function saveTask(task) {
+    const token = localStorage.getItem('token');
+    fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token
+        },
+        body: JSON.stringify([task])
+    });
 }
 
 function minutesToTime(minutes) {
@@ -168,4 +203,9 @@ function sortTasks(taskList) {
     });
 
     tasks.forEach(task => taskList.appendChild(task));
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    window.location.href = '/';
 }
