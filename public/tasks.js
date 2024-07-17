@@ -1,32 +1,58 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    generateWeek();
+    await loadTasks();
+});
+
+async function loadTasks() {
     const token = localStorage.getItem('token');
     if (!token) {
         window.location.href = '/';
         return;
     }
 
-    fetchTasks();
-
-    document.getElementById('logout-btn').addEventListener('click', logout);
-});
-
-async function fetchTasks() {
-    const token = localStorage.getItem('token');
-    const response = await fetch('/tasks', {
+    const response = await fetch('/api/tasks', {
         headers: {
-            'Authorization': token
+            'Authorization': `Bearer ${token}`
         }
     });
 
     if (response.ok) {
-        const { tasks } = await response.json();
+        const tasks = await response.json();
         tasks.forEach(task => {
             addTaskElement(task.day, task.text, task.startTime, task.endTime);
         });
     } else {
-        console.error('Failed to fetch tasks');
+        console.error('Failed to load tasks', response.statusText);
     }
 }
+
+async function saveTasks() {
+    const token = localStorage.getItem('token');
+    const tasks = [];
+
+    document.querySelectorAll('.task-list li').forEach(task => {
+        tasks.push({
+            day: task.closest('.day-container').id,
+            text: task.querySelector('span').innerText,
+            startTime: task.querySelector('.start-time').innerText,
+            endTime: task.querySelector('.time').innerText
+        });
+    });
+
+    const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(tasks)
+    });
+
+    if (!response.ok) {
+        console.error('Failed to save tasks', response.statusText);
+    }
+}
+
 
 async function saveTasks() {
     const token = localStorage.getItem('token');
