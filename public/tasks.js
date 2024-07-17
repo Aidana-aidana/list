@@ -5,32 +5,77 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    fetch('/api/tasks', {
+    fetchTasks();
+
+    document.getElementById('logout-btn').addEventListener('click', logout);
+});
+
+async function fetchTasks() {
+    const token = localStorage.getItem('token');
+    const response = await fetch('/tasks', {
         headers: {
             'Authorization': token
         }
-    })
-        .then(response => response.json())
-        .then(tasks => {
-            tasks.forEach(task => {
-                addTaskToDOM(task);
-            });
+    });
+
+    if (response.ok) {
+        const { tasks } = await response.json();
+        tasks.forEach(task => {
+            addTaskElement(task.day, task.text, task.startTime, task.endTime);
         });
+    } else {
+        console.error('Failed to fetch tasks');
+    }
+}
 
-    generateWeek();
-});
+async function saveTasks() {
+    const token = localStorage.getItem('token');
+    const tasks = [];
 
-function addTaskToDOM(task) {
-    const dayContainer = document.getElementById(task.day);
+    document.querySelectorAll('.day-container').forEach(container => {
+        const day = container.id;
+        container.querySelectorAll('li').forEach(taskItem => {
+            const text = taskItem.querySelector('span').textContent;
+            const startTime = taskItem.querySelector('.start-time .start').textContent;
+            const endTime = taskItem.querySelector('.time').textContent;
+
+            tasks.push({ day, text, startTime, endTime });
+        });
+    });
+
+    await fetch('/tasks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': token
+        },
+        body: JSON.stringify({ tasks })
+    });
+}
+
+async function addTask(day) {
+    const dayContainer = document.getElementById(day);
+    const taskInput = dayContainer.querySelector('input[type="text"]');
+    const taskText = taskInput.value.trim();
+
+    if (taskText !== '') {
+        addTaskElement(day, taskText, 'Not set', 'Not set');
+        await saveTasks();
+        taskInput.value = '';
+    }
+}
+
+function addTaskElement(day, text, startTime, endTime) {
+    const dayContainer = document.getElementById(day);
     const taskList = dayContainer.querySelector('.task-list');
     const newTask = document.createElement('li');
 
     newTask.innerHTML = `
         <div class="task-item">
-            <div class="start-time"><span class="start">${task.startTime}</span></div>
-            <span>${task.text}</span>
+            <div class="start-time"><span class="start">${startTime}</span></div>
+            <span>${text}</span>
             <div class="task-actions">
-                <div class="timer-box" style="display: none;"><span class="time">${task.endTime}</span></div>
+                <div class="timer-box" style="display: none;"><span class="time">${endTime}</span></div>
                 <button class="icon-button complete" onclick="toggleComplete(this)">
                     <i class="fas fa-check"></i>
                 </button>
@@ -65,92 +110,6 @@ function addTaskToDOM(task) {
     });
 }
 
-function generateWeek() {
-    const weekContainer = document.getElementById('week-container');
-    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const today = new Date();
-    const startOfWeek = today.getDate();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-
-    for (let i = 0; i < 7; i++) {
-        const date = new Date(currentYear, currentMonth, startOfWeek + i);
-        const dayName = daysOfWeek[date.getDay()];
-        const dayDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-        const dayContainer = document.createElement('div');
-        dayContainer.className = 'day-container';
-        dayContainer.id = dayName.toLowerCase();
-
-        dayContainer.innerHTML = `
-            <h2>${dayName} - ${dayDate}</h2>
-            <input type="text" placeholder="Add a new task" onkeypress="handleKeyPress(event, '${dayName.toLowerCase()}')">
-            <button onclick="addTask('${dayName.toLowerCase()}')">Add</button>
-            <ul class="task-list"></ul>
-        `;
-
-        weekContainer.appendChild(dayContainer);
-    }
-}
-
-function handleKeyPress(event, day) {
-    if (event.key === 'Enter') {
-        addTask(day);
-    }
-}
-
-function addTask(day) {
-    const dayContainer = document.getElementById(day);
-    const taskInput = dayContainer.querySelector('input[type="text"]');
-    const taskText = taskInput.value.trim();
-
-    if (taskText !== '') {
-        const taskList = dayContainer.querySelector('.task-list');
-        const newTask = document.createElement('li');
-
-        newTask.innerHTML = `
-            <div class="task-item">
-                <div class="start-time"><span class="start">Not set</span></div>
-                <span>${taskText}</span>
-                <div class="task-actions">
-                    <div class="timer-box" style="display: none;"><span class="time">Not set</span></div>
-                    <button class="icon-button complete" onclick="toggleComplete(this)">
-                        <i class="fas fa-check"></i>
-                    </button>
-                    <button class="icon-button delete" onclick="deleteTask(this)">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="timer-inputs">
-                <div class="slider" id="slider-${Date.now()}"></div>
-                <button onclick="setTaskTime(this)">Set Task Time</button>
-            </div>
-        `;
-
-        taskList.appendChild(newTask);
-
-        const slider = newTask.querySelector('.slider');
-        $(slider).slider({
-            range: true,
-            min: 0,
-            max: 1440,
-            step: 30,
-            values: [480, 1020],
-            slide: function (event, ui) {
-                $(slider).find('.ui-slider-handle').eq(0).attr('data-value', minutesToTime(ui.values[0]));
-                $(slider).find('.ui-slider-handle').eq(1).attr('data-value', minutesToTime(ui.values[1]));
-            },
-            create: function (event, ui) {
-                $(slider).find('.ui-slider-handle').eq(0).attr('data-value', minutesToTime(480));
-                $(slider).find('.ui-slider-handle').eq(1).attr('data-value', minutesToTime(1020));
-            }
-        });
-
-        taskInput.value = '';
-    }
-}
-
 function minutesToTime(minutes) {
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -160,11 +119,13 @@ function minutesToTime(minutes) {
 function toggleComplete(button) {
     const taskItem = button.closest('li');
     taskItem.classList.toggle('completed');
+    saveTasks();
 }
 
 function deleteTask(button) {
     const taskItem = button.closest('li');
     taskItem.remove();
+    saveTasks();
 }
 
 function setTaskTime(button) {
@@ -213,6 +174,7 @@ function setTaskTime(button) {
     timerBox.style.display = 'block';
 
     sortTasks(taskItem.parentElement);
+    saveTasks();
 }
 
 function minutesToDateTime(minutes) {
@@ -233,35 +195,7 @@ function sortTasks(taskList) {
     tasks.forEach(task => taskList.appendChild(task));
 }
 
-function saveTasks() {
-    const token = localStorage.getItem('token');
-    const tasks = [];
-
-    document.querySelectorAll('.task-list').forEach(taskList => {
-        taskList.querySelectorAll('li').forEach(taskItem => {
-            const task = {
-                day: taskList.parentElement.id,
-                text: taskItem.querySelector('span').textContent,
-                startTime: taskItem.querySelector('.start').textContent,
-                endTime: taskItem.querySelector('.time').textContent,
-            };
-            tasks.push(task);
-        });
-    });
-
-    fetch('/api/tasks', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': token
-        },
-        body: JSON.stringify({ tasks })
-    });
-}
-
-document.getElementById('logout-button').addEventListener('click', () => {
+function logout() {
     localStorage.removeItem('token');
     window.location.href = '/';
-});
-
-window.addEventListener('beforeunload', saveTasks);
+}

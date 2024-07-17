@@ -1,42 +1,41 @@
-function register() {
+async function register() {
     const username = document.getElementById('register-username').value;
     const password = document.getElementById('register-password').value;
 
-    fetch('/register', {
+    const response = await fetch('/register', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ username, password })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.message === 'User registered') {
-                alert('Registration successful. You can now log in.');
-            } else {
-                alert('Registration failed: ' + data.error.message);
-            }
-        });
+    });
+
+    if (response.ok) {
+        alert('Registration successful');
+    } else {
+        const errorData = await response.json();
+        alert(`Registration failed: ${errorData.message}`);
+    }
 }
 
-function login() {
+async function login() {
     const username = document.getElementById('login-username').value;
     const password = document.getElementById('login-password').value;
 
-    fetch('/login', {
+    const response = await fetch('/login', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({ username, password })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.token) {
-                localStorage.setItem('token', data.token);
-                window.location.href = '/tasks';
-            } else {
-                alert('Login failed: ' + data.message);
-            }
-        });
+    });
+
+    if (response.ok) {
+        const { token } = await response.json();
+        localStorage.setItem('token', token);
+        window.location.href = '/tasks';
+    } else {
+        const errorData = await response.json();
+        alert(`Login failed: ${errorData.message}`);
+    }
 }
