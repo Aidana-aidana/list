@@ -7,7 +7,6 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 app.use(express.json());
 app.use(cors());
@@ -30,17 +29,27 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
-// Middleware to verify JWT token
-const verifyToken = (req, res, next) => {
-    const token = req.headers['authorization'];
-    if (!token) return res.status(401).send('Unauthorized');
+const taskSchema = new mongoose.Schema({
+    userId: mongoose.Schema.Types.ObjectId,
+    tasks: Array,
+});
 
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) return res.status(403).send('Forbidden');
+const Task = mongoose.model('Task', taskSchema);
+
+// Middleware for verifying JWT token
+function verifyToken(req, res, next) {
+    const token = req.headers['authorization'];
+    if (!token) {
+        return res.status(403).send('Unauthorized');
+    }
+    jwt.verify(token, 'your_jwt_secret', (err, decoded) => {
+        if (err) {
+            return res.status(403).send('Unauthorized');
+        }
         req.userId = decoded.id;
         next();
     });
-};
+}
 
 // Register endpoint
 app.post('/register', async (req, res) => {
@@ -72,7 +81,7 @@ app.post('/login', async (req, res) => {
             return res.status(400).send('Invalid username or password');
         }
 
-        const token = jwt.sign({ id: user._id }, JWT_SECRET);
+        const token = jwt.sign({ id: user._id }, 'your_jwt_secret');
         res.send({ token });
     } catch (error) {
         res.status(500).send({ message: 'Login failed', error });
@@ -92,20 +101,21 @@ app.get('/tasks', verifyToken, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'tasks.html'));
 });
 
-// Endpoint to get tasks for the logged-in user
-app.get('/api/tasks', verifyToken, (req, res) => {
-    const tasks = [
-        { day: 'monday', text: 'Sample Task 1', startTime: '08:00', endTime: '09:00' },
-        // add more tasks
-    ];
-    res.send(tasks);
+// Save tasks endpoint
+app.post('/api/tasks', verifyToken, async (req, res) => {
+    const { tasks } = req.body;
+    await Task.findOneAndUpdate(
+        { userId: req.userId },
+        { userId: req.userId, tasks },
+        { upsert: true }
+    );
+    res.status(200).send('Tasks saved');
 });
 
-// Endpoint to save tasks for the logged-in user
-app.post('/api/tasks', verifyToken, (req, res) => {
-    const tasks = req.body;
-    // Save tasks to the database
-    res.send({ message: 'Tasks saved' });
+// Get tasks endpoint
+app.get('/api/tasks', verifyToken, async (req, res) => {
+    const userTasks = await Task.findOne({ userId: req.userId });
+    res.send(userTasks ? userTasks.tasks : []);
 });
 
 app.listen(PORT, () => {
